@@ -36,7 +36,7 @@ do
                  spotConfigurationName="${launchConfigurationName/\#costly_/\#spot_}"
                  echo "Changing to cheaper launch configuration: $spotConfigurationName"
 
-                 aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --launch-configuration-name $spotConfigurationName --desired-capacity $increaseCapacity --minSize $increaseCapacity
+                 aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --launch-configuration-name $spotConfigurationName --desired-capacity $increaseCapacity --min-size $increaseCapacity
                fi
              fi
           else
