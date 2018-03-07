@@ -1,16 +1,25 @@
 #!/bin/bash
 set -e
-AUTO_SCALE=$1
-LAUNCH_CONFIG=$1
+ACCESS_KEY=$1
+SECRET_KEY=$2
+REGION=$3
 
-while [ 1 ]
-do
-    action=`curl http://169.254.169.254/latest/meta-data/instance-action`
+if [ -z "${SECRET_KEY}" ]; then
+    echo "secret key required"
+    exit 1
+fi
 
-    echo $action
-    if [ "$action" != "none" ]
-    then
-      aws autoscaling update-auto-scaling-group --auto-scaling-group-name $AUTO_SCALE --launch-configuration-name $LAUNCH_CONFIG
-    fi
-    sleep 5
-done
+if [ -z "${REGION}" ]; then
+echo "aaa"
+fi
+mkdir -p ~/.aws
+
+echo "[default]" > ~/.aws/config
+echo "output = json" >> ~/.aws/config
+echo "region = ${REGION}" >> ~/.aws/config
+
+echo "[default]" > ~/.aws/credentials
+echo "aws_access_key_id = ${ACCESS_KEY}" >> ~/.aws/credentials
+echo "aws_secret_access_key = ${SECRET_KEY}" >> ~/.aws/credentials
+
+chmod go-rwx ~/.aws/*
