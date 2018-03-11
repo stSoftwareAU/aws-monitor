@@ -7,6 +7,14 @@ do
         json=$(curl --silent --fail -X PUT $asName ) 
     else
         json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name $asName )
+        
+        count=1
+        echo $json| jq -c '.AutoScalingGroups[0].Instances[]' | while read instanceJSON; do
+            instanceID=$(jq -r ".InstanceId" <<< $instanceJSON)
+
+            aws ec2 create-tags --resources $instanceID --tag Key=Name,Value="$asName#$count"
+            count=$((count+1))
+        done
 
         launchConfigurationName=$( jq -r '.AutoScalingGroups[0].LaunchConfigurationName'<<<${json} )
 
