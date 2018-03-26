@@ -49,7 +49,7 @@ do
     -size $increaseCapacity
                         fi
                     fi
-                else
+                elif [[ $launchConfigurationName =~ .+#.+ ]]; then
                     echo "Not a valid launch configuration name: $launchConfigurationName"
                 fi
             fi
