@@ -55,18 +55,18 @@ do
                 if [[ "$launchConfigurationName" != "$spotConfigurationName" ]]; then
                     echo "$costCount costly instances running, changing launch configuration to: $spotConfigurationName"
                     aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --launch-configuration-name $spotConfigurationName
-                fi
-                
-                maxSize=$( jq -r '.AutoScalingGroups[0].MaxSize'<<<${json} );
-                increaseCapacity=$(($minSize + 2))
-                if [[ $increaseCapacity > $maxSize ]]; then
-                    increaseCapacity=$maxSize;
-                fi
 
-                desiredCapacity=$( jq -r '.AutoScalingGroups[0].DesiredCapacity'<<<${json} )
-                if [[ $desiredCapacity < $increaseCapacity ]]; then
-                    echo "Increasing DesiredCapacity from $desiredCapacity -> $increaseCapacity for $asName as costly instances running."
-                    aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --desired-capacity $increaseCapacity
+                    maxSize=$( jq -r '.AutoScalingGroups[0].MaxSize'<<<${json} );
+                    increaseCapacity=$(($minSize + 2))
+                    if [[ $increaseCapacity > $maxSize ]]; then
+                        increaseCapacity=$maxSize;
+                    fi
+
+                    desiredCapacity=$( jq -r '.AutoScalingGroups[0].DesiredCapacity'<<<${json} )
+                    if [[ $desiredCapacity < $increaseCapacity ]]; then
+                        echo "Increasing DesiredCapacity from $desiredCapacity -> $increaseCapacity for $asName as costly instances running."
+                        aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --desired-capacity $increaseCapacity
+                    fi
                 fi
             fi
          fi
