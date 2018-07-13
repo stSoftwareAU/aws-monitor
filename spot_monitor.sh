@@ -8,7 +8,8 @@ do
     else
         json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name $asName )
         
-        costlyCount=0;
+        rm -f ~/${asName}_costly
+
         instanceCount=$( jq -r '.AutoScalingGroups[0].Instances|length'<<<${json} )
         if [[ ${instanceCount} > 0 ]]; then
           count=1
@@ -25,7 +26,7 @@ do
                   launchConfigurationName=$(jq -r ".LaunchConfigurationName" <<< $instanceJSON)
 
                   if [[ $launchConfigurationName =~ .+#costly_.+ ]]; then
-                    costlyCount=$((costlyCount+1));
+                    touch ~/${asName}_costly
                   fi
                 fi
             fi
@@ -49,7 +50,7 @@ do
                         aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --launch-configuration-name $costlyConfigurationName
                     fi
                 fi
-            elif [[ $minSize > 0 && $instanceCount -ge $minSize && $costlyCount > 0 ]]; then
+            elif [[ $minSize > 0 && $instanceCount -ge $minSize && -f ~/${asName}_costly ]]; then
                 spotConfigurationName="${launchConfigurationName/\#costly_/#spot_}";
                 if [[ "$launchConfigurationName" != "$spotConfigurationName" ]]; then
                     echo "$costCount costly instances running, changing launch configuration to: $spotConfigurationName"
