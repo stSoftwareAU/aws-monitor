@@ -65,7 +65,7 @@ do
 
                 desiredCapacity=$( jq -r '.AutoScalingGroups[0].DesiredCapacity'<<<${json} )
                 if [[ $desiredCapacity < $increaseCapacity ]]; then
-                    echo "Increasing DesiredCapacity from $desiredCapacity -> $increaseCapacity for $asName as $costlyCount costly instances running."
+                    echo "Increasing DesiredCapacity from $desiredCapacity -> $increaseCapacity for $asName as costly instances running."
                     aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --desired-capacity $increaseCapacity
                 fi
             fi
