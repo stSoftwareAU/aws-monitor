@@ -41,13 +41,13 @@ do
                        minRunning=1;
                     fi
                     if [[ $instanceCount < $minRunning ]]; then
-                        costlyConfigurationName="${launchConfigurationName/#spot_/#costly_}"
+                        costlyConfigurationName="${launchConfigurationName/\#spot_/#costly_}"
                         echo "Only $instanceCount of $minSize running, changing launch configuration to: $costlyConfigurationName"
                         aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --launch-configuration-name $costlyConfigurationName
                     fi
                 fi
             elif [[ $minSize > 0 && $instanceCount -ge $minSize && $costlyCount > 0 ]]; then
-                spotConfigurationName="${launchConfigurationName/#costly_/#spot_}";
+                spotConfigurationName="${launchConfigurationName/\#costly_/#spot_}";
                 if [[ "$launchConfigurationName" != "$spotConfigurationName" ]]; then
                     echo "$costCount costly instances running, changing launch configuration to: $spotConfigurationName"
                     aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --launch-configuration-name $spotConfigurationName
