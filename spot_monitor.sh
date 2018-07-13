@@ -20,10 +20,13 @@ do
 
             healthStatus=$(jq -r ".HealthStatus" <<< $instanceJSON)
             if [[ $healthStatus = 'Healthy' ]]; then
-                launchConfigurationName=$(jq -r ".LaunchConfigurationName" <<< $instanceJSON)
+                lifecycleState=$(jq -r ".LifecycleState" <<< $instanceJSON)
+                if [[ $lifecycleState = 'InService' ]]; then
+                  launchConfigurationName=$(jq -r ".LaunchConfigurationName" <<< $instanceJSON)
 
-                if [[ $launchConfigurationName =~ '.+#costly_.+' ]]; then
+                  if [[ $launchConfigurationName =~ .+#costly_.+ ]]; then
                     costlyCount=$((costlyCount+1));
+                  fi
                 fi
             fi
           done
@@ -35,7 +38,7 @@ do
             minSize=$( jq -r '.AutoScalingGroups[0].MinSize'<<<${json} )
             
             if [[ $instanceCount < $minSize ]]; then
-                if [[ $launchConfigurationName =~ ".+#spot_.+" ]]; then 
+                if [[ $launchConfigurationName =~ .+#spot_.+ ]]; then 
                     minRunning=$(($minSize -2 ));
                     if [[ $minRunning < 1 ]]; then
                        minRunning=1;
