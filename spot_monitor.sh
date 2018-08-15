@@ -16,7 +16,12 @@ do
           echo $json| jq -c '.AutoScalingGroups[0].Instances[]' | while read instanceJSON; do
             instanceID=$(jq -r ".InstanceId" <<< $instanceJSON)
 
-            aws ec2 create-tags --resources $instanceID --tag Key=Name,Value="$asName#$count"
+            instanceDescribeJSON=$(aws ec2 describe-instances --instance-ids $instanceID)
+            currentName=$(jq -r '.Reservations[0].Instances[0].Tags|map( select( .Key == "Name")) [0].Value'<<<$instanceDescribeJSON)
+            newName=$asName#$count
+            if [ "$currentName" != "$newName" ]; then
+               aws ec2 create-tags --resources $instanceID --tag Key=Name,Value="$newName"
+            fi
             count=$((count+1))
 
             healthStatus=$(jq -r ".HealthStatus" <<< $instanceJSON)
