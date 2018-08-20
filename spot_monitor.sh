@@ -17,7 +17,7 @@ do
             instanceID=$(jq -r ".InstanceId" <<< $instanceJSON)
 
             instanceDescribeJSON=$(aws ec2 describe-instances --instance-ids $instanceID)
-            currentName=$(jq -r '.Reservations[0].Instances[0].Tags|map( select( .Key == "Name")) [0].Value'<<<$instanceDescribeJSON)
+            currentName=$(jq -r '.Reservations[0].Instances[0].Tags|try map( select( .Key == "Name")) catch []'<<<$instanceDescribeJSON)
             newName=$asName#$count
             if [ "$currentName" != "$newName" ]; then
                aws ec2 create-tags --resources $instanceID --tag Key=Name,Value="$newName"
