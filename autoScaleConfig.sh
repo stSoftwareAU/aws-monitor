@@ -22,7 +22,7 @@ main() {
 
     local configArray=$(jq -c '.[]' ${config_array_file})
 
-    for configJSON in $configArray; do
+    for configJson in $configArray; do
 
         auto_scaling_group_name=$(jq -r '.AutoScalingGroupName // empty' <<<"${configJson}")
         cost_model=$(jq -r '.CostModel // empty' <<<"${configJson}")
@@ -31,6 +31,11 @@ main() {
         desired_capacity=$(jq -r '.DesiredCapacity // empty' <<<"${configJson}")
         max_size=$(jq -r '.MaxSize // empty' <<<"${configJson}")
 
+        pause=$(jq -r '.pause // empty' <<<"${configJson}")
+
+        if [ ! -z "${pause}" ]; then
+           sleep ${pause}
+        fi
         # Find launch configuration ID
         auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
         old_launch_config=$(jq -r '.AutoScalingGroups[].LaunchConfigurationName'<<<"${auto_scaling_group_json}")
