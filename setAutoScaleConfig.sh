@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Configures aws auto scaling groups
+# Input: json file 	 <<<KEEP THIS UP TO DATE>>>
+#{
+#	"AutoScalingGroupName" : "<name>",
+#	"CostModel" : "<spot or costly>",
+#	"InstanceType" : "<size of machine ie 2X>",
+#	"MinSize" : "<min #instances>",
+#	"MaxSize" : "<max #instances>",
+#	"DesiredCapacity" : "<desired #instances>"
+#}	
+# Note: Only AutoScalingGroupName is mandatory, though InstanceType and MachineSize should always be included when relevent. 
+
+set -o errexit
+set -o pipefail
+set -o nounset
+# set -o xtrace
+
+main() {
+        #Variable declaration (all omitted variables are made empty)
+        config_json="$1"
+        auto_scaling_group_name=$(jq -r '.AutoScalingGroupName // empty' "${config_json}")
+        cost_model=$(jq -r '.CostModel // empty' "${config_json}")
+        instance_type=$(jq -r '.InstanceType // empty' "${config_json}")
+        min_size=$(jq -r '.MinSize // empty' "${config_json}")
+        desired_capacity=$(jq -r '.DesiredCapacity // empty' "${config_json}")
+        max_size=$(jq -r '.MaxSize // empty' "${config_json}")
+
+        # Find launch configuration ID
+        auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
+        old_launch_config=$(jq -r '.AutoScalingGroups[].LaunchConfigurationName'<<<"${auto_scaling_group_json}")
+        ID="${old_launch_config/*_}"
+
+        # Construct new launch configuration name
+        launch_config_name="${auto_scaling_group_name}"
+        [ ! -z "${instance_type}" ] && launch_config_name="${launch_config_name}@${instance_type}"
+        [ ! -z "${cost_model}" ] && launch_config_name="${launch_config_name}#${cost_model}"
+        launch_config_name="${launch_config_name}_${ID}"
+
+        # Construct JSON object for new auto scaling group configuration
+        cli_input_json=$(jq -n --arg lcn "${launch_config_name}" '{"LaunchConfigurationName": $lcn}')
+        [ ! -z "${min_size}" ] &&  cli_input_json=$(jq --argjson ms "${min_size}" '.+{"MinSize": $ms}'<<<"${cli_input_json}")
+        [ ! -z "${desired_capacity}"] &&  cli_input_json=$(jq --argjson dc "${desired_capacity}" '.+{"DesiredCapacity": $dc}'<<<"${cli_input_json}")
+        [ ! -z "${max_size}" ] &&  cli_input_json=$(jq --argjson ms "${max_size}" '.+{"MaxSize": $ms}'<<<"${cli_input_json}")
+
+        # Update auto scaling group configuration
+        jsonFile=$(mktemp /tmp/aws.XXXXXX.json)
+        echo "${cli_input_json}" > $jsonFile
+        # (>&2 jq . $jsonFile) 
+        aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --cli-input-json file://${jsonFile}
+        rm $jsonFile
+}
+
+main "$@"
