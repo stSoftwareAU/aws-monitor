@@ -55,7 +55,7 @@ main() {
           cli_input_json=$(jq -n --arg lcn "${launch_config_name}" '{"LaunchConfigurationName": $lcn}')
         fi
         [ ! -z "${min_size}" ] &&  cli_input_json=$(jq --argjson ms "${min_size}" '.+{"MinSize": $ms}'<<<"${cli_input_json}")
-        [ ! -z "${desired_capacity}"] &&  cli_input_json=$(jq --argjson dc "${desired_capacity}" '.+{"DesiredCapacity": $dc}'<<<"${cli_input_json}")
+        [ ! -z "${desired_capacity}" ] &&  cli_input_json=$(jq --argjson dc "${desired_capacity}" '.+{"DesiredCapacity": $dc}'<<<"${cli_input_json}")
         [ ! -z "${max_size}" ] &&  cli_input_json=$(jq --argjson ms "${max_size}" '.+{"MaxSize": $ms}'<<<"${cli_input_json}")
 
         # Update auto scaling group configuration
