@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+DIR="$( cd -P "$( dirname "$BASH_SOURCE" )" && pwd -P )"
+cd $DIR
+
+cancelledSpots=$( ./checkSpotRequests.sh )
+
 for asName in "$@"
 do
     if [[ "$asName" =~ http(s|)://.+ ]]; then
@@ -8,7 +13,7 @@ do
     else
         json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name $asName )
         
-        rm -f ~/${asName}_costly
+#        rm -f ~/${asName}_costly
 
         instanceCount=$( jq -r '.AutoScalingGroups[0].Instances|length'<<<${json} )
         if [[ ${instanceCount} > 0 ]]; then
@@ -24,17 +29,17 @@ do
             fi
             count=$((count+1))
 
-            healthStatus=$(jq -r ".HealthStatus" <<< $instanceJSON)
-            if [[ $healthStatus = 'Healthy' ]]; then
-                lifecycleState=$(jq -r ".LifecycleState" <<< $instanceJSON)
-                if [[ $lifecycleState = 'InService' ]]; then
-                  launchConfigurationName=$(jq -r ".LaunchConfigurationName" <<< $instanceJSON)
-
-                  if [[ $launchConfigurationName =~ .+#costly_.+ ]]; then
-                    touch ~/${asName}_costly
-                  fi
-                fi
-            fi
+#            healthStatus=$(jq -r ".HealthStatus" <<< $instanceJSON)
+#            if [[ $healthStatus = 'Healthy' ]]; then
+#                lifecycleState=$(jq -r ".LifecycleState" <<< $instanceJSON)
+#                if [[ $lifecycleState = 'InService' ]]; then
+#                  launchConfigurationName=$(jq -r ".LaunchConfigurationName" <<< $instanceJSON)
+#
+#                  if [[ $launchConfigurationName =~ .+#costly_.+ ]]; then
+#                    touch ~/${asName}_costly
+#                  fi
+#                fi
+#            fi
           done
         fi
 
@@ -43,7 +48,7 @@ do
         if [ ! -z $launchConfigurationName ] && [ "$launchConfigurationName" != "null" ]; then
             minSize=$( jq -r '.AutoScalingGroups[0].MinSize'<<<${json} )
             
-            if [[ $instanceCount < $minSize ]]; then
+            if [[ $instanceCount < $minSize ]] || [[ ! -z "${cancelledSpots}" ]]; then
                 if [[ $launchConfigurationName =~ .+#spot_.+ ]]; then 
                     minRunning=$(($minSize -2 ));
                     if [[ $minRunning < 1 ]]; then
