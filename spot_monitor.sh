@@ -73,7 +73,7 @@ do
             #            aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asName --desired-capacity $increaseCapacity
             #        fi
             #    fi
-            #fi
+            fi
          fi
     fi
 done
