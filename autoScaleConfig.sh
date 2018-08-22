@@ -33,7 +33,7 @@ main() {
 
         pause=$(jq -r '.pause // empty' <<<"${configJson}")
 
-        if [ ! -z "${pause}" ]; then
+        if [[ ! -z "${pause}" ]]; then
            echo "sleeping ${pause}..."
            sleep ${pause}
         fi
@@ -49,7 +49,11 @@ main() {
         launch_config_name="${launch_config_name}_${ID}"
 
         # Construct JSON object for new auto scaling group configuration
-        cli_input_json=$(jq -n --arg lcn "${launch_config_name}" '{"LaunchConfigurationName": $lcn}')
+        if [[ -z "${instance_type}" ]] && [[ -z "${cost_model}" ]]; then
+          cli_input_json="{}"
+        else
+          cli_input_json=$(jq -n --arg lcn "${launch_config_name}" '{"LaunchConfigurationName": $lcn}')
+        fi
         [ ! -z "${min_size}" ] &&  cli_input_json=$(jq --argjson ms "${min_size}" '.+{"MinSize": $ms}'<<<"${cli_input_json}")
         [ ! -z "${desired_capacity}"] &&  cli_input_json=$(jq --argjson dc "${desired_capacity}" '.+{"DesiredCapacity": $dc}'<<<"${cli_input_json}")
         [ ! -z "${max_size}" ] &&  cli_input_json=$(jq --argjson ms "${max_size}" '.+{"MaxSize": $ms}'<<<"${cli_input_json}")
