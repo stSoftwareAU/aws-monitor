@@ -34,6 +34,7 @@ main() {
         pause=$(jq -r '.pause // empty' <<<"${configJson}")
 
         if [ ! -z "${pause}" ]; then
+           echo "sleeping ${pause}..."
            sleep ${pause}
         fi
         # Find launch configuration ID
