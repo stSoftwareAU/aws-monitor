@@ -8,6 +8,8 @@
 #	"MinSize" : "<min #instances>",
 #	"MaxSize" : "<max #instances>",
 #	"DesiredCapacity" : "<desired #instances>"
+#   "_pause": number of seconds
+#   "_deploy": true to start a rolling deploy.
 #}	
 # Note: Only AutoScalingGroupName is mandatory, though InstanceType and MachineSize should always be included when relevent. 
 
