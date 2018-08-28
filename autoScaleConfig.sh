@@ -17,6 +17,8 @@ set -o errexit
 set -o pipefail
 set -o nounset
 # set -o xtrace
+DIR="$( cd -P "$( dirname "$BASH_SOURCE" )" && pwd -P )"
+cd $DIR
 
 main() {
     #Variable declaration (all omitted variables are made empty)
