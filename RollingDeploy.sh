@@ -7,7 +7,7 @@
 set -o errexit
 set -o pipefail
 set -o nounset
-set -o xtrace # Uncomment to debug
+#set -o xtrace # Uncomment to debug
 
 main() {
 	# Parameters
