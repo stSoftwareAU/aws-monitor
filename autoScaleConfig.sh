@@ -8,8 +8,8 @@
 #	"MinSize" : "<min #instances>",
 #	"MaxSize" : "<max #instances>",
 #	"DesiredCapacity" : "<desired #instances>"
-#   "_pause": number of seconds
-#   "_deploy": true to start a rolling deploy.
+#  	"_pause": number of seconds
+#   	"_deploy": true to start a rolling deploy.
 #}	
 # Note: Only AutoScalingGroupName is mandatory, though InstanceType and MachineSize should always be included when relevent. 
 
@@ -35,12 +35,14 @@ main() {
         desired_capacity=$(jq -r '.DesiredCapacity // empty' <<<"${configJson}")
         max_size=$(jq -r '.MaxSize // empty' <<<"${configJson}")
 
-        pause=$(jq -r '.pause // empty' <<<"${configJson}")
+	# Wait here because reasons #TODO do we need this?
+        pause=$(jq -r '._pause // empty' <<<"${configJson}")
 
         if [[ ! -z "${pause}" ]]; then
            echo "sleeping ${pause}..."
            sleep ${pause}
         fi
+
         # Find launch configuration ID
         auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
         old_launch_config=$(jq -r '.AutoScalingGroups[].LaunchConfigurationName'<<<"${auto_scaling_group_json}")
@@ -69,6 +71,12 @@ main() {
         aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --cli-input-json file://${jsonFile}
         rm $jsonFile
     done
+
+    auto_scaling_group_names=$(jq --raw-output '.[] | select(._deploy==true) | .AutoScalingGroupName'<<<"${configArray}")
+
+    for name in $auto_scaling_group_names; do
+	./RollingDeploy.sh "${name}"
+    done 	
 }
 
 main "$@"
