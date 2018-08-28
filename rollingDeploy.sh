@@ -76,6 +76,7 @@ main() {
 			
 			# Update variables
 			auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
+			launch_configuration_name=$(jq -r '.AutoScalingGroups[].LaunchConfigurationName'<<<"${auto_scaling_group_json}")
 			number_healthy=$(jq '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy")] | length'<<<"${auto_scaling_group_json}")
 			t1=$(date +%s)
 		done
