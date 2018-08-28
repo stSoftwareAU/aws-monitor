@@ -72,10 +72,10 @@ main() {
         rm $jsonFile
     done
 
-    auto_scaling_group_names=$(jq --raw-output '.[] | select(._deploy==true) | .AutoScalingGroupName'<<<"${configArray}")
+    auto_scaling_group_names=$(jq --raw-output '.[] | select(._deploy==true) | .AutoScalingGroupName' ${config_array_file})
 
     for name in $auto_scaling_group_names; do
-	./RollingDeploy.sh "${name}"
+	./rollingDeploy.sh "${name}"
     done 	
 }
 
