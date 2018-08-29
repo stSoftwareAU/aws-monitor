@@ -4,7 +4,7 @@ set -e
 DIR="$( cd -P "$( dirname "$BASH_SOURCE" )" && pwd -P )"
 cd $DIR
 
-cancelledSpots=$( ./checkSpotRequests.sh )
+./checkSpotRequests.sh
 
 for asName in "$@"
 do
@@ -48,7 +48,7 @@ do
         if [ ! -z $launchConfigurationName ] && [ "$launchConfigurationName" != "null" ]; then
             minSize=$( jq -r '.AutoScalingGroups[0].MinSize'<<<${json} )
             
-            if [[ $instanceCount < $minSize ]] || [[ ! -z "${cancelledSpots}" ]]; then
+            if [[ $instanceCount < $minSize ]]; then
                 if [[ $launchConfigurationName =~ .+#spot_.+ ]]; then 
                     minRunning=$(($minSize -2 ));
                     if [[ $minRunning < 1 ]]; then
