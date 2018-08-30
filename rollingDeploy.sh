@@ -10,10 +10,10 @@ set -o nounset
 #set -o xtrace # Uncomment to debug
 
 # Parameters
-declare -i tolerance=60*15	 	# minutes
-declare -i scale_in_rest_period=60 	# seconds
-declare -i scale_out_rest_period=120	# seconds
-declare -i monitoring_rest_period=10	# seconds
+declare -i tolerance=60*45	 	# minutes
+declare -i scale_in_rest_period=60*7 	# seconds
+declare -i scale_out_rest_period=60*7	# seconds
+declare -i monitoring_rest_period=15	# seconds
 
 # Global declared variables
 declare -i t0=$(date +%s)		#start the clock
