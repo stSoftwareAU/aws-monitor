@@ -44,7 +44,8 @@ main() {
 		aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --termination-policies "OldestInstance" "Default"
 			
 		while ! satisfied && [ $time -lt $tolerance ]; do
-		
+			
+			# TODO increase min by number of wrong instances
 			declare -i new_min=$((desired_capacity + 1 < max_size ? desired_capacity + 1: max_size))
 			aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --min-size $new_min
 			
@@ -117,6 +118,20 @@ monitor_until_stable() {
         	sleep $monitoring_rest_period
                 time=$(($(date +%s) - t0))
         done
+}
+
+# set number_healthy by counting the number of healthy instnaces in the autoscaling group.
+#TODO set number_healthy to global variable
+count_healthy_instances() {
+	auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
+	health_check_type=$(jq '.AutoScalingGroups[].HealthCheckType'<<<"${auto_scaling_group_json}")
+	if [ "$health_check_type" = "EC2" ]; then
+		number_healthy=$(jq '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LifecycleState=="InService")] | length' \
+			<<<"${auto_scaling_group_json}")
+	elif[ "$health_check_type" = "ELB" ]; then
+		#TODO get health status from ELB
+	else
+		 &>2 echo "${auto_scaling_group_name} has unhandled health check type"
 }
 
 main "$@"
