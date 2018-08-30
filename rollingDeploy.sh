@@ -24,108 +24,86 @@ main() {
 	# Variables 
 	auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
 	if [ $(jq -r '.AutoScalingGroups | length'<<<"${auto_scaling_group_json}") != 1 ]; then
-		 echo "there is not one unique auto scaling group by that name"
+		 &>2 echo "There is not one unique auto scaling group by the name of ${auto_scaling_group_name}"
 		 exit 1 
 	fi
 	launch_configuration_name=$(jq -r '.AutoScalingGroups[].LaunchConfigurationName'<<<"${auto_scaling_group_json}")
 	min_size=$(jq -r '.AutoScalingGroups[].MinSize'<<<"${auto_scaling_group_json}")
-	number_healthy=$(jq '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LifecycleState=="InService")] | length'<<<"${auto_scaling_group_json}")
 	max_size=$(jq -r '.AutoScalingGroups[].MaxSize'<<<"${auto_scaling_group_json}")
+	if [ $min_size -eq $max_size ]; then
+		&>2 echo "${auto_scaling_group_name} is configured with min-size = max-size"
+		exit 1
+	fi
 	desired_capacity=$(jq -r '.AutoScalingGroups[].DesiredCapacity'<<<"${auto_scaling_group_json}")
-	health_check_type=$(jq -r '.AutoScalingGroups[].HealthCheckType'<<<"${auto_scaling_group_json}")
-	termination_policies=$(jq -r '.AutoScalingGroups[].TerminationPolicies[]'<<<"${auto_scaling_group_json}")	
 	
-	#Rolling deploy 
+	# Rolling deploy 
 	if satisfied; then 
 		echo "auto scaling group ${auto_scaling_group_name} already compliant"
-	else
-		# More variables
-		target_groups_json=`aws autoscaling describe-load-balancer-target-groups --auto-scaling-group-name "${auto_scaling_group_name}"`
-                target_groups=$(jq -r '.LoadBalancerTargetGroups[] | .LoadBalancerTargetGroupARN'<<<"${target_groups_json}")	
-
-		#Rock and roll
-		while ! satisfied && [ $time -lt $tolerance ]; do
+	else 
+		# Set termination policies 
+		aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --termination-policies "OldestInstance" "Default"
 			
-			if [ ${number_healthy} -gt 1 ]; then 
-				silently_kill_instance
-				
-				sleep $scale_in_rest_period
-				time=$(($(date +%s) - t0))				
-				monitor_until_stable
-				
-				aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --min-size $min_size --desired-capacity $min_size
+		while ! satisfied && [ $time -lt $tolerance ]; do
+		
+			declare -i new_min=$((desired_capacity + 1 < max_size ? desired_capacity + 1: max_size))
+			aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --min-size $new_min
+			
+			sleep $scale_in_rest_period
+			time=$(($(date +%s) - t0))
+			monitor_until_stable
 
-			elif [ ${min_size} -le 1 ]; then
-				aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --min-size 2
-				
-				sleep $scale_in_rest_period
-                                time=$(($(date +%s) - t0))
-                                monitor_until_stable
+			aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --min-size $min_size --desired-capacity $min_size
 
-				aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --min-size $min_size --desired-capacity $min_size
-			fi
-
-                        sleep $scale_out_rest_period
-                        time=$(($(date +%s) - t0))
-                        monitor_until_stable
+			sleep $scale_out_rest_period
+			time=$(($(date +%s) - t0))
+			monitor_until_stable
 
 			# Update variables
 			auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
 			launch_configuration_name=$(jq -r '.AutoScalingGroups[].LaunchConfigurationName'<<<"${auto_scaling_group_json}")
-			number_healthy=$(jq '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LifecycleState=="InService")] | length' \
-				<<<"${auto_scaling_group_json}")
-			
 			time=$(($(date +%s) - t0))
 		done
 	fi
 	
-	#Confirm successful deploy
+	# Reset launch config, min, max, and desired.
+	aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" \
+		--min-size $min_size --max-size $max_size --desired-capacity $min_size \
+		--termination-policies "OldestLaunchConfiguration" "OldestInstance" "Default"
+	
+	# Confirm successful deploy
 	if ! satisfied; then
+		&>2 echo "Rolling deploy failed for ${auto_scaling_group_name}"
 		exit 1
 	fi
 }
 
 # Checks the launch configuration is satisfied
 satisfied() {
-#	auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}") 		#I don't think I need this line
-#       number_healthy=$(jq '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy")] | length'<<<"${auto_scaling_group_json}") 	#or this one
-
-	local number_healthy_and_correct=$(jq --arg lcn "${launch_configuration_name}" \
-                        '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LifecycleState=="InService" and .LaunchConfigurationName==$lcn)] | length' \
-                        <<< "${auto_scaling_group_json}")
-
-#	if [ "${number_healthy}" -ge "${min_size}" ] && [ "${number_healthy}" -eq "${number_healthy_and_correct}" ]; then 			#old logic, delete if uneeded
-
-	if [ "${number_healthy_and_correct}" -ge "${min_size}" ]; then
+	local number_healthy=$(jq '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LifecycleState=="InService")] | length' \
+		<<<"${auto_scaling_group_json}")
+	if [[ "${launch_configuration_name}" =~ .*#costly[^a-z,0-9].* ]]; then	
+		local number_healthy_and_correct=$(jq --arg lcn1 "${launch_configuration_name}" --arg lcn2 "${launch_configuration_name//\#costly/\#spot}" \
+        	        '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LifecycleState=="InService" and
+	                (.LaunchConfigurationName==$lcn1 or .LaunchConfigurationName==$lcn2))] | length' <<< "${auto_scaling_group_json}")
+	else     
+		local number_healthy_and_correct=$(jq --arg lcn "${launch_configuration_name}" \
+			'[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LifecycleState=="InService" and .LaunchConfigurationName==$lcn)] | length' \
+                	<<< "${auto_scaling_group_json}")
+	fi
+	if [ "${number_healthy}" -ge "${min_size}" ] && [ "${number_healthy}" -eq "${number_healthy_and_correct}" ]; then
 		true; return
 	else
 		false; return
 	fi
 }
 
-# Safely take an instance out of service, or failing that, increase min and desired capacity.
-silently_kill_instance() {
-	desired_capacity=$(jq -r '.AutoScalingGroups[].DesiredCapacity'<<<"${auto_scaling_group_json}")
-	
-	if [ "${health_check_type}" = "ELB" ]; then
-		local victum_id=$(jq --arg lcn "${launch_configuration_name}" \
-			'[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LaunchConfigurationName!=$lcn)][0] | .InstanceId' \
-			<<< "${auto_scaling_group_json}")
-
-        	for target_group_arn in "${target_groups}"; do
-                	aws elbv2 deregister-targets --target-group-arn "${target_group_arn}" --targets Id="${victum_id}"
-	        done
-	else 
-		local new_min=$((desired_capacity + 1 < max_size ? desired_capacity + 1: max_size))
-		aws autoscaling update-auto-scaling-group --auto-scaling-group-name "${auto_scaling_group_name}" --min-size $new_min
-	fi
-}
-
 # Checks the system is stable
 stable() {
 	auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
-	number_healthy=$(jq '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LifecycleState=="InService")] | length'<<<"${auto_scaling_group_json}")
-	number_instances=$(jq '[.AutoScalingGroups[].Instances[] | select(.LifecycleState!="Terminating")] | length'<<<"${auto_scaling_group_json}")
+	local number_healthy=$(jq '[.AutoScalingGroups[].Instances[] | select(.HealthStatus=="Healthy" and .LifecycleState=="InService")] | length' \
+		<<<"${auto_scaling_group_json}")
+	local number_instances=$(jq '[.AutoScalingGroups[].Instances[] | select(.LifecycleState!="Terminating")] | length'<<<"${auto_scaling_group_json}")
+
 	if [ ${number_instances} -eq ${number_healthy} ]; then
 		true; return
 	else
