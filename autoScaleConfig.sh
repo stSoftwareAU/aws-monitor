@@ -75,7 +75,7 @@ main() {
     auto_scaling_group_names=$(jq --raw-output '.[] | select(._deploy==true) | .AutoScalingGroupName' ${config_array_file})
 
     for name in $auto_scaling_group_names; do
-	./rollingDeploy.sh "${name}" > ~/logs/${name}.log &
+	./kissRollingDeploy.sh "${name}" > ~/logs/${name}.log &
     done 	
 }
 
