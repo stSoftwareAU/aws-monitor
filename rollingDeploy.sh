@@ -36,8 +36,8 @@ main() {
                 exit 1
         fi
         desired_capacity=$(jq -r '.AutoScalingGroups[].DesiredCapacity'<<<"${auto_scaling_group_json}")
-	
-	# Rolling deploy 
+
+        # Rolling deploy 
         if satisfied; then
                 echo "auto scaling group ${auto_scaling_group_name} already compliant"
                 exit 0
@@ -81,7 +81,6 @@ main() {
                 &>2 echo "Rolling deploy failed for ${auto_scaling_group_name}"
                 exit 1
         fi
-
 }
 
 # checks the launch configuration is satisfied
@@ -122,7 +121,6 @@ monitor_until_stable() {
                 time=$(($(date +%s) - t0))
         done
 }
-
 
 # set number_healthy by counting the number of healthy instances in the autoscaling group.
 count_healthy_instances() {
