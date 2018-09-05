@@ -35,7 +35,6 @@ main() {
                 &>2 echo "${auto_scaling_group_name} is configured with min-size = max-size"
                 exit 1
         fi
-        desired_capacity=$(jq -r '.AutoScalingGroups[].DesiredCapacity'<<<"${auto_scaling_group_json}")
 
         # Rolling deploy 
         if satisfied; then
@@ -104,6 +103,7 @@ satisfied() {
 
 # checks the system is stable
 stable() {
+        auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
         count_healthy_instances
         local number_instances=$(jq '[.AutoScalingGroups[].Instances[] | select(.LifecycleState!="Terminating")] | length'<<<"${auto_scaling_group_json}")
         local desired_capacity=$(jq -r '.AutoScalingGroups[].DesiredCapacity'<<<"${auto_scaling_group_json}")
@@ -124,7 +124,6 @@ monitor_until_stable() {
 
 # set number_healthy by counting the number of healthy instances in the autoscaling group.
 count_healthy_instances() {
-        auto_scaling_group_json=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name "${auto_scaling_group_name}")
         local health_check_type=$(jq -r '.AutoScalingGroups[].HealthCheckType'<<<"${auto_scaling_group_json}")
 
         if [ $health_check_type = "EC2" ]; then
