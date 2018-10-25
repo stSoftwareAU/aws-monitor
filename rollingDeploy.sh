@@ -74,7 +74,7 @@ main() {
     aws autoscaling update-auto-scaling-group \
         --auto-scaling-group-name "${auto_scaling_group_name}" \
         --min-size $min_size --desired-capacity $min_size \
-        --termination-policies "OldestLaunchConfiguration" "OldestInstance" "Default"
+        --termination-policies "Default"
 
     # Confirm successful deploy
     if ! satisfied; then
@@ -153,7 +153,7 @@ count_healthy_instances() {
         aws autoscaling update-auto-scaling-group \
             --auto-scaling-group-name "${auto_scaling_group_name}" \
             --min-size $min_size --max-size $max_size --desired-capacity $min_size \
-            --termination-policies "OldestLaunchConfiguration" "OldestInstance" "Default"
+            --termination-policies "Default"
 
         exit 1
     fi
