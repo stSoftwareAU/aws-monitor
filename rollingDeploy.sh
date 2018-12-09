@@ -132,6 +132,8 @@ count_healthy_instances() {
                 <<<"${auto_scaling_group_json}")
     elif [ $health_check_type = "ELB" ]; then
         local target_groups_json=`aws autoscaling describe-load-balancer-target-groups --auto-scaling-group-name "${auto_scaling_group_name}"`
+        
+        # Only handle one load balancer.
         local target_groups=$(jq -r '.LoadBalancerTargetGroups[0] | .LoadBalancerTargetGroupARN'<<<"${target_groups_json}")
         local instances=$(jq -r --raw-output '.AutoScalingGroups[].Instances[].InstanceId'<<<"${auto_scaling_group_json}")
         number_healthy=0
