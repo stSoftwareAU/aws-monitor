@@ -43,7 +43,7 @@ jobs:
           echo "${RUNNER_TEMP}/gitleaks-bin" >> "${GITHUB_PATH}"
 
       - name: Scan current files
-        run: gitleaks dir . --redact=100 --no-banner --exit-code 1
+        run: gitleaks dir . --redact=100 --no-banner --verbose --exit-code 1
 
       - name: Scan every commit introduced by the PR
         if: github.event_name == 'pull_request'
@@ -54,9 +54,9 @@ jobs:
           set -euo pipefail
           git cat-file -e "${BASE_SHA}^{commit}"
           git cat-file -e "${HEAD_SHA}^{commit}"
-          gitleaks git . --redact=100 --no-banner --exit-code 1 \
+          gitleaks git . --redact=100 --no-banner --verbose --exit-code 1 \
             --log-opts="${BASE_SHA}..${HEAD_SHA}"
 
       - name: Scan all fetched history on manual runs
         if: github.event_name == 'workflow_dispatch'
-        run: gitleaks git . --redact=100 --no-banner --exit-code 1 --log-opts="--all"
+        run: gitleaks git . --redact=100 --no-banner --verbose --exit-code 1 --log-opts="--all"
